@@ -3,6 +3,7 @@
 import numpy as np
 import random
 from copy import deepcopy
+from utils import log
 
 class SimpleNeuralNetwork:
 
@@ -13,6 +14,7 @@ class SimpleNeuralNetwork:
         self.b1 = np.zeros((1, hidden_size))
         self.b2 = np.zeros((1, output_size))
         self.debug = debug
+        self.log = log.__get__(self)
         
     def relu(self, Z):
         return np.maximum(0, Z)
@@ -23,10 +25,9 @@ class SimpleNeuralNetwork:
         return dZ
         
     def forward(self, X):
-        if self.debug:
-            print("⏩ Forward pass de la red neuronal")
-            print("Input X:")
-            print(X)
+        self.log("⏩ Forward pass de la red neuronal")
+        self.log("Input X:")
+        self.log(X)
         
         self.X = X
         self.Z1 = X.dot(self.W1) + self.b1 
@@ -65,7 +66,7 @@ class DQN_IA:
     def __init__(self, GameClass=None, debug=False):
           
         self.debug = debug
-        self.mark = None
+        self.log = log.__get__(self)
         
         self.get_valid_moves_func = GameClass.get_valid_moves_from_state
         self.game_state_to_array_func = GameClass.state_to_array
@@ -92,8 +93,7 @@ class DQN_IA:
     def state_to_array(self, board):
         return self.game_state_to_array_func(board)
     
-    def make_move(self, state):
-        board = state["board"]
+    def make_move(self, board):
         valid_moves = self.get_valid_moves_func(board)
 
         if not valid_moves:
@@ -101,26 +101,20 @@ class DQN_IA:
         
         # 1. Exploración (Epsilon-Greedy)
         if random.random() < self.epsilon:
-            if self.debug:
-                print("🎲 Exploración: eligiendo movimiento aleatorio...")
+            self.log("🎲 Exploración: eligiendo movimiento aleatorio...")
 
             best_move = random.choice(valid_moves) # move es el valor de acción del juego
 
-            if self.debug:
-                print(f"Move aleatorio: {best_move} e:{self.epsilon:.4f}")
+            self.log(f"Move aleatorio: {best_move} e:{self.epsilon:.4f}")
             
         # 2. Explotación
         else:
-            if self.debug:
-                print("💥 Explotación: calculando Q values para el estado actual...")
+            self.log("💥 Explotación: calculando Q values para el estado actual...")
 
             q_values = self.q_network.forward(self.state_to_array(board))[0] 
             
-            if self.debug:
-                print("valid_moves:")
-                print(valid_moves)
-                print("Q values:")
-                print(q_values)
+            self.log(f"valid_moves: {valid_moves}")
+            self.log(f"Q values: {q_values}")
             
             q_values_valid = q_values[valid_moves]
 
@@ -128,39 +122,36 @@ class DQN_IA:
             
             best_move = valid_moves[relative_best_index]
 
-            if self.debug:
-                print("Q values válidos:")
-                print(q_values_valid)
-                print(f"Best move index (relativo): {relative_best_index}")
-                print(f"Best move (absoluto): {best_move}")
-                print(f"Best move Q-value: {q_values[best_move]}")
+            self.log(f"Q values válidos: {q_values_valid}")
+            self.log(f"Best move index (relativo): {relative_best_index}")
+            self.log(f"Best move (absoluto): {best_move}")
+            self.log(f"Best move Q-value: {q_values[best_move]}")
             
         self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
         return best_move
 
     
     def learn(self, history):
-        """ history: [old_board, move, reward, new_board] """
+
         if not history:
             return
-        if (self.debug):
-            print("🤖 DQN_IA aprendiendo de la historia de la partida...")
-            print("Historia:", history)
+        self.log("🤖 DQN_IA aprendiendo de la historia de la partida...")
+        self.log("Historia:", history)
 
-        old_states = np.vstack([self.state_to_array(h[0]) for h in history])
-        new_states = np.vstack([self.state_to_array(h[3]) for h in history])
+        old_states = np.vstack([self.state_to_array(h["state"]) for h in history])
+        new_states = np.vstack([self.state_to_array(h["next_state"]) for h in history])
         
         Q_predicted_all = self.q_network.forward(old_states)
         Q_next_all = self.target_network.forward(new_states)
         Q_target_all = Q_predicted_all.copy()
 
-        if self.debug:
-            print("Q_predicted_all:")
-            print(Q_predicted_all)
-            print("Q_target_all:")
-            print(Q_target_all)
+        self.log("Q_predicted_all:", Q_predicted_all)
+        self.log("Q_target_all:", Q_target_all)
         
-        for i, (old_s, action, reward, new_s) in enumerate(history):
+        for i, h in enumerate(history):
+            action = h["action"]
+            reward = h["reward"]
+            new_s = h["next_state"]
             
             valid_indices = self.get_valid_moves_func(new_s)
 
@@ -173,12 +164,10 @@ class DQN_IA:
             target_q = reward + self.discount_factor * max_future_q
             Q_target_all[i, action] = target_q
         
+        self.log("Después de actualizar los Q_target_all:")
+        self.log("Q_predicted_all:", Q_predicted_all)
+        self.log("Q_target_all:", Q_target_all)
         if self.debug:
-            print("Después de actualizar los Q_target_all:")
-            print("Q_predicted_all:")
-            print(Q_predicted_all)
-            print("Q_target_all:")
-            print(Q_target_all)
             input("pausa end_learn")
         self.q_network.backward(Q_predicted_all, Q_target_all, self.learning_rate)
 
