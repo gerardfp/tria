@@ -17,6 +17,8 @@ class TicTacToe():
 
     def __init__(self, p1, p2, quiet=False):
         self.board_size = 9
+        p1.mark = 1
+        p2.mark = -1
         self.state = {
             "board": [0] * self.board_size,
             "current_player": p1,
@@ -70,7 +72,7 @@ class TicTacToe():
             self.state["result"] = "move invalid"
             
     def get_valid_moves(self):
-        return [i for i in range(self.board_size) if self.state["board"][i] == 0]
+        return TicTacToe.get_valid_moves_from_state(self.state["board"])
 
     def get_board_size(self):
         return self.board_size
@@ -89,4 +91,9 @@ class TicTacToe():
         """Retorna una lista de índices de movimientos válidos (0-8) a partir de un estado de tablero."""
         # Se asume que state_board es la tupla/lista de 9 elementos
         return [i for i in range(9) if state_board[i] == 0]
+
+    @staticmethod
+    def state_to_array(board):
+        """Convierte el tablero (lista de 9) en un array de numpy (1, 9)."""
+        return np.array(board).reshape(1, -1)
 

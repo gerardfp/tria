@@ -1,19 +1,25 @@
+import numpy as np
+
 class NimGame():
-    """Implementa las reglas del juego 'Ataque del 10'."""
+    """Implementa las reglas del juego 'Ataque del 10'.
+    El que resta el último número gana.
+    """
     # Constantes del juego
     
-    MAX_NIM = 21
+    MAX_NIM = 7
     ACTIONS = [1, 2, 3] # Movimientos permitidos: restar 1, 2, o 3
 
     CONFIG = {
-        "input_size": 1, 
+        "input_size": MAX_NIM + 1, 
         "output_size": len(ACTIONS),
-        "hidden_size": 16,      
+        "hidden_size": 64,      
         "game_actions": ACTIONS,
     }
 
     def __init__(self, p1, p2, quiet=False):
         self.initial_nim = self.MAX_NIM
+        p1.mark = 1
+        p2.mark = -1
         self.state = {
             "board": [self.initial_nim],
             "current_player": p1,
@@ -29,7 +35,7 @@ class NimGame():
         while True:
             try:
                 if not self.quiet:
-                    print(f"\n--- Turno {self.state["current_player"]} (Quedan: {remaining}) ---")
+                    print(f"\n--- Turno {self.state['current_player']} (Quedan: {remaining}) ---")
                     print(f"Puedes restar: {[move for move in self.ACTIONS if move <= remaining]}")
                 i = int(self.state["current_player"].make_move(self.state))
                 
@@ -39,10 +45,10 @@ class NimGame():
                     return i
                 elif not self.quiet:
 
-                    print(f"Movimiento inválido. Debes restar 1, 2, o 3 y no exceder {remaining}.")
+                    print(f"Movimiento inválido. Debes restar {[move for move in self.ACTIONS if move <= remaining]} y no exceder {remaining}.")
             except ValueError:
                 if not self.quiet:
-                    print("Entrada inválida. Usa 1, 2 o 3.")
+                    print("Entrada inválida. Usa {[move for move in self.ACTIONS if move <= remaining]}.")
         
 
     def _win(self):
@@ -68,16 +74,23 @@ class NimGame():
             self.state["result"] = "move invalid" 
             
     def get_valid_moves(self):
-        remaining = self.state["board"][0]
-        return [i for i, move in enumerate(self.actions) if move <= remaining]
+        return NimGame.get_valid_moves_from_state(self.state["board"])
 
     def get_board_size(self):
         return self.MAX_NIM + 1
 
     def print_board(self):
-        print(f"Número restante: {self.state["board"][0]}")
+        print(f"Número restante: {self.state['board'][0]}")
 
     @staticmethod
     def get_valid_moves_from_state(state_board):
         remaining = state_board[0]
         return [i for i, move in enumerate(NimGame.ACTIONS) if move <= remaining]
+
+    @staticmethod
+    def state_to_array(board):
+        """Convierte el tablero (un solo número) en un vector One-Hot."""
+        remaining = board[0]
+        arr = np.zeros((1, NimGame.MAX_NIM + 1))
+        arr[0, remaining] = 1.0
+        return arr

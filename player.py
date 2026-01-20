@@ -1,7 +1,8 @@
 class Player:
     """Representa un jugador humano, ajustado para el Nim."""
-    def __init__(self, mark=-1):
-        self.mark = mark
+    def __init__(self):
+        self.mark = None
+
 
     def __repr__(self):
         return "Human"
